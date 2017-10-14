@@ -13,6 +13,22 @@ from .forms import LoginForm,RegistrationForm
 from .. import db
 from ..email import send_email
 
+@auth.before_app_request
+# 使用before_request或before_app_request的钩子函数,如果回调返回响应或者重定向,
+# Flask会直接将其发送至客户端,而不会调用请求的视图函数,因此这些回调可以在必要时候拦截请求
+def before_request():
+    if current_user.is_authenticated \
+        and not current_user.confirmed \
+        and request.endpoint[:5] != 'auth.'\
+        and request.endpoint != 'static':
+        return redirect(url_for('auth.unconfirmed'))
+
+@auth.route('/unconfirmed')
+def unconfirmed():
+    if current_user.is_anonymous or current_user.confirmed:
+        return redirect(url_for('main.index'))
+    return render_template('auth/unconfirmed.html')
+
 @auth.route('/login',methods=['GET','POST'])
 # 记住是methods,不是method!!!!!!
 def login():
@@ -47,3 +63,23 @@ def register():
         flash('You can now login.')
         return redirect(url_for('auth.login'))
     return render_template('auth/register.html', form=form)
+@auth.route('/confirm/<token>')
+# FLask-Login提供的login_required修饰器会保护这个路由,因此,用户点击确认邮件中的链接后,要先登录,才能执行这个视图函数
+@login_required
+def confirm(token):
+    if current_user.confirmed:
+        return redirect(url_for('main.index'))
+    if current_user.confirm(token):
+        flash('You have confirmed your account. Thanks!')
+    else:
+        flash('The confirmation link is invalid or has expired.')
+    return redirect(url_for('main.index'))
+
+@auth.route('/confirm')
+@login_required
+def resend_confirmation():
+    token = current_user.generate_confirmation_token()
+    send_email(current_user.email, 'Confirm Your Account',
+               'auth/email/confirm', user=current_user, token=token)
+    flash('A new confirmation email has been sent to you by email.')
+    return redirect(url_for('main.index'))
