@@ -6,11 +6,11 @@
 {% block page_content %}
 <div class="page-header">
     <h1>
-        欢迎您光临我的博客
         {% if current_user.is_authenticated %}
         {{ current_user.username }}
+        <span style="font-size: 1em"  >用户:已写入SQLite数据库中</span>
         {% else %}
-            陌生人!
+            请点击登陆->注册->写入用户数据库!
         {% endif %}!</h1>
     <h1>您好, {% if name %}{{ name }}{% else %}陌生人{% endif %}!</h1>
     {% if not known %}
